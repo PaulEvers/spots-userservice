@@ -7,7 +7,8 @@ import com.google.firebase.auth.UserRecord;
 import nl.paulevers.spotsuserservice.classes.UserLikeRequest;
 import nl.paulevers.spotsuserservice.entities.User;
 import nl.paulevers.spotsuserservice.classes.UserCreateRequest;
-import nl.paulevers.spotsuserservice.events.SpotLikedEvent;
+import nl.paulevers.spotsuserservice.events.EventType;
+import nl.paulevers.spotsuserservice.events.MqEvent;
 import nl.paulevers.spotsuserservice.repositories.UserRepository;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -24,10 +24,6 @@ import java.util.NoSuchElementException;
 public class UserController {
     @Autowired
     private AmqpTemplate rabbitTemplate;
-    @Value("${workshop.rabbitmq.exchange}")
-    private String exchange;
-    @Value("${workshop.rabbitmq.routingkey}")
-    private String routingkey;
 
     @Autowired
     private UserRepository repository;
@@ -100,25 +96,59 @@ public class UserController {
     public @ResponseBody
     ResponseEntity<?> likeSpot(@RequestHeader("Authorization") String token, @RequestBody UserLikeRequest request) {
         try {
-//            FirebaseToken decodedToken = decodeToken(token);
-//            String uid = decodedToken.getUid();
-            String uid = "2jQArBUBuZWXso27PehZuKV7q0z1";
+            FirebaseToken decodedToken = decodeToken(token);
+            String uid = decodedToken.getUid();
 
             if(uid != "" && uid != null) {
                 User user = repository.findById(uid).get();
                 String spotId = request.getSpotId();
-                user.likeSpot(spotId);
-                repository.save(user);
-                rabbitTemplate.convertAndSend("test", new SpotLikedEvent(spotId));
-                return new ResponseEntity<>(HttpStatus.OK);
+                // If spot is not yet previously liked
+                if(user.likeSpot(spotId)) {
+                    repository.save(user);
+                    MqEvent event = new MqEvent();
+                    event.setEventType(EventType.SpotLikedEvent);
+                    event.setData(spotId);
+                    rabbitTemplate.convertAndSend("spotsQueue", event);
+                    return new ResponseEntity<>(HttpStatus.OK);
+                }
+                return new ResponseEntity<>("Spot is already liked", HttpStatus.FORBIDDEN);
             }
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } catch (NoSuchElementException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (FirebaseAuthException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
-//        catch (FirebaseAuthException e) {
-//            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-//        }
+    }
+
+    @DeleteMapping(value="/user/liked")
+    public @ResponseBody
+    ResponseEntity<?> unlikeSpot(@RequestHeader("Authorization") String token, @RequestBody UserLikeRequest request) {
+        try {
+            FirebaseToken decodedToken = decodeToken(token);
+            String uid = decodedToken.getUid();
+
+            if(uid != "" && uid != null) {
+                User user = repository.findById(uid).get();
+                String spotId = request.getSpotId();
+
+                // If spot is removed
+                if(user.dislikeSpot(spotId)) {
+                    repository.save(user);
+                    MqEvent event = new MqEvent();
+                    event.setEventType(EventType.SpotUnlikedEvent);
+                    event.setData(spotId);
+                    rabbitTemplate.convertAndSend("spotsQueue", event);
+                    return new ResponseEntity<>(HttpStatus.OK);
+                }
+                return new ResponseEntity<>("Spot is already unliked", HttpStatus.FORBIDDEN);
+            }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (FirebaseAuthException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
     }
 
 

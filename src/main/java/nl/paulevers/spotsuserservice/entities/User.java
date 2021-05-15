@@ -19,4 +19,6 @@ public class User {
     public boolean likeSpot(String id) {
         return favoriteSpotsIds.add(id);
     }
+
+    public boolean dislikeSpot(String id) { return favoriteSpotsIds.remove(id); }
 }
