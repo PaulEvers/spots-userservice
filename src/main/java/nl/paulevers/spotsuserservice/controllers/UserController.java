@@ -4,10 +4,14 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.google.firebase.auth.UserRecord;
+import nl.paulevers.spotsuserservice.classes.UserLikeRequest;
 import nl.paulevers.spotsuserservice.entities.User;
 import nl.paulevers.spotsuserservice.classes.UserCreateRequest;
+import nl.paulevers.spotsuserservice.events.SpotLikedEvent;
 import nl.paulevers.spotsuserservice.repositories.UserRepository;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,14 +23,20 @@ import java.util.NoSuchElementException;
 @RestController
 public class UserController {
     @Autowired
+    private AmqpTemplate rabbitTemplate;
+    @Value("${workshop.rabbitmq.exchange}")
+    private String exchange;
+    @Value("${workshop.rabbitmq.routingkey}")
+    private String routingkey;
+
+    @Autowired
     private UserRepository repository;
 
     @GetMapping(value="/user")
     public @ResponseBody
     ResponseEntity<?> getUser(@RequestHeader("Authorization") String token) {
         try {
-            FirebaseToken decodedToken = null;
-            decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+            FirebaseToken decodedToken = decodeToken(token);
             String uid = decodedToken.getUid();
 
             if(uid != "" && uid != null) {
@@ -84,5 +94,35 @@ public class UserController {
         } catch (FirebaseAuthException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
+    }
+
+    @PostMapping(value="/user/liked")
+    public @ResponseBody
+    ResponseEntity<?> likeSpot(@RequestHeader("Authorization") String token, @RequestBody UserLikeRequest request) {
+        try {
+//            FirebaseToken decodedToken = decodeToken(token);
+//            String uid = decodedToken.getUid();
+            String uid = "2jQArBUBuZWXso27PehZuKV7q0z1";
+
+            if(uid != "" && uid != null) {
+                User user = repository.findById(uid).get();
+                String spotId = request.getSpotId();
+                user.likeSpot(spotId);
+                repository.save(user);
+                rabbitTemplate.convertAndSend("test", new SpotLikedEvent(spotId));
+                return new ResponseEntity<>(HttpStatus.OK);
+            }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+//        catch (FirebaseAuthException e) {
+//            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+//        }
+    }
+
+
+    private FirebaseToken decodeToken(String token) throws FirebaseAuthException {
+        return FirebaseAuth.getInstance().verifyIdToken(token);
     }
 }

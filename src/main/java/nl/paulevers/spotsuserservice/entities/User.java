@@ -4,9 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Data
 @Document(collection = "users")
@@ -16,5 +14,9 @@ public class User {
     String name;
     String email;
     long userCreated = new Date().getTime(); // Unix
-    List<String> favoriteSpotsIds = new ArrayList<>();
+    Set<String> favoriteSpotsIds = new HashSet<>();
+
+    public boolean likeSpot(String id) {
+        return favoriteSpotsIds.add(id);
+    }
 }
