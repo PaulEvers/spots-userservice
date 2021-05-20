@@ -12,7 +12,6 @@ import nl.paulevers.spotsuserservice.events.MqEvent;
 import nl.paulevers.spotsuserservice.repositories.UserRepository;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
