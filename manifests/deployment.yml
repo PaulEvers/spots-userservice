@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe
+      convert
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: spots-userservice
+  name: spots-userservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: spots-userservice
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe
+          convert
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/spots-network: "true"
+        io.kompose.service: spots-userservice
+    spec:
+      containers:
+      - env:
+        - name: eureka_client_serviceUrl_defaultZone
+          value: http://spots-eureka:8761/eureka
+        - name: server_port
+          value: "8082"
+        - name: spring_data_mongodb_host
+          value: mongo
+        - name: spring_rabbitmq_host
+          value: rabbitmq
+        image: spotsregistry1.azurecr.io/spots-userservice:latest
+        imagePullPolicy: ""
+        name: spots-userservice
+        ports:
+        - containerPort: 8082
+        resources: {}
+      hostname: spots-userservice
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes: null
+status: {}

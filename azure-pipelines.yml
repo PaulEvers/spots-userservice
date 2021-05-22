@@ -1,6 +1,19 @@
 trigger:
   - main
 
+variables:
+
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'a6e1a27a-7959-441f-8e43-1eeb8fbb5947'
+  imageRepository: 'spots-userservice'
+  containerRegistry: 'spotsregistry1.azurecr.io'
+  dockerfilePath: '**/Dockerfile'
+  tag: '$(Build.BuildId)'
+  imagePullSecret: 'spotsregistry11835b849-auth'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
 name: spots-userservice - $(Date:yyyyMMdd)$(Rev:.rr)
 
 stages:
@@ -58,3 +71,36 @@ stages:
               command: 'push'
               tags: |
                 latest
+          - upload: manifests
+            artifact: manifests
+  - stage: Deploy
+    displayName: Deploy stage
+
+    jobs:
+    - deployment: Deploy
+      displayName: Deploy
+      pool:
+        vmImage: $(vmImageName)
+      environment: 'PaulEversspots.default'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: KubernetesManifest@0
+              displayName: Create imagePullSecret
+              inputs:
+                action: createSecret
+                secretName: $(imagePullSecret)
+                dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
+
+            - task: KubernetesManifest@0
+              displayName: Deploy to Kubernetes cluster
+              inputs:
+                action: deploy
+                manifests: |
+                  $(Pipeline.Workspace)/manifests/deployment.yml
+                  $(Pipeline.Workspace)/manifests/service.yml
+                imagePullSecrets: |
+                  $(imagePullSecret)
+                containers: |
+                  $(containerRegistry)/$(imageRepository):latest
