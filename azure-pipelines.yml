@@ -22,6 +22,16 @@ stages:
       - job:
         displayName: Build spots-userservice
         steps:
+          - task: SonarQubePrepare@4
+            inputs:
+              SonarQube: 'SonarQube'
+              scannerMode: 'Other'
+              extraProperties: |
+                sonar.projectName=spots-userservice
+                sonar.projectKey=spots-userservice
+          - powershell: |
+              $params = "$env:SONARQUBE_SCANNER_PARAMS" -replace '"sonar.branch.name":"[\w/,-.]*"\,?'
+              Write-Host "##vso[task.setvariable variable=SONARQUBE_SCANNER_PARAMS]$params"
           - task: Gradle@2
             inputs:
               gradleWrapperFile: 'gradlew'
@@ -31,7 +41,12 @@ stages:
               javaHomeOption: 'JDKVersion'
               jdkVersionOption: '1.11'
               jdkArchitectureOption: 'x64'
-              sonarQubeRunAnalysis: false
+              sonarQubeRunAnalysis: true
+              sqGradlePluginVersionChoice: 'build'
+              spotBugsAnalysis: false
+          - task: SonarQubePublish@4
+            inputs:
+              pollingTimeoutSec: '300'
   - stage: Create_Images
     jobs:
         - job:
