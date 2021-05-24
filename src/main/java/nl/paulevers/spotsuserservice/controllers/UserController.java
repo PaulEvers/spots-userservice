@@ -98,7 +98,7 @@ public class UserController {
             FirebaseToken decodedToken = decodeToken(token);
             String uid = decodedToken.getUid();
 
-            if(uid != "" && uid != null) {
+            if(!uid.equals("")) {
                 User user = repository.findById(uid).get();
                 String spotId = request.getSpotId();
                 // If spot is not yet previously liked
@@ -127,7 +127,7 @@ public class UserController {
             FirebaseToken decodedToken = decodeToken(token);
             String uid = decodedToken.getUid();
 
-            if(uid != "" && uid != null) {
+            if(!uid.equals("")) {
                 User user = repository.findById(uid).get();
                 String spotId = request.getSpotId();
 
