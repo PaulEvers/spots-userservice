@@ -7,6 +7,7 @@ import com.google.firebase.auth.UserRecord;
 import nl.paulevers.spotsuserservice.classes.UserLikeRequest;
 import nl.paulevers.spotsuserservice.entities.User;
 import nl.paulevers.spotsuserservice.classes.UserCreateRequest;
+import nl.paulevers.spotsuserservice.entities.UserCreatedInfo;
 import nl.paulevers.spotsuserservice.events.EventType;
 import nl.paulevers.spotsuserservice.events.MqEvent;
 import nl.paulevers.spotsuserservice.repositories.UserRepository;
@@ -16,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -34,7 +37,7 @@ public class UserController {
             FirebaseToken decodedToken = decodeToken(token);
             String uid = decodedToken.getUid();
 
-            if(uid != "" && uid != null) {
+            if(!uid.equals("")) {
                 User user = repository.findById(uid).get();
                 return new ResponseEntity<>(user, HttpStatus.OK);
             }
@@ -147,6 +150,26 @@ public class UserController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } catch (FirebaseAuthException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @GetMapping(value="/user/created")
+    public @ResponseBody
+    ResponseEntity<?> getUsersCreationDate() {
+        try {
+                List<User> users = repository.findAll();
+                List<UserCreatedInfo> userCreatedInfos = new ArrayList<>();
+                users.forEach((user) -> {
+                    UserCreatedInfo userCreatedInfo = new UserCreatedInfo();
+                    userCreatedInfo.setId(user.getId());
+                    userCreatedInfo.setUserCreated(user.getUserCreated());
+
+                    userCreatedInfos.add(userCreatedInfo);
+                });
+                return new ResponseEntity<>(userCreatedInfos, HttpStatus.OK);
+
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
