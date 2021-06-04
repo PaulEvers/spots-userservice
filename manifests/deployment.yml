@@ -41,7 +41,11 @@ spec:
         name: spots-userservice
         ports:
         - containerPort: 8082
-        resources: {}
+        resources:
+          requests:
+            cpu: "250m"
+          limits:
+            cpu: "500m"
       hostname: spots-userservice
       restartPolicy: Always
       serviceAccountName: ""
